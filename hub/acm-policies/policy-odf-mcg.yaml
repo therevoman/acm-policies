@@ -1,0 +1,78 @@
+# This policy verifies the installation of the official version of the OpenShift Data Foundation
+# Operator on the managed clusters.
+# If set to "enforce" it installs the operator.
+# Used APIs: OLM, ODF #https://github.com/operator-framework/operator-lifecycle-manager
+# https://github.com/red-hat-storage/odf-operator
+
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+ annotations:
+   policy.open-cluster-management.io/categories: CM Configuration Management
+   policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+   policy.open-cluster-management.io/standards: NIST SP 800-53
+ name: policy-odf-storagecluster-mcgonly
+ namespace: acm-policies
+spec:
+ disabled: false
+ policy-templates:
+   - objectDefinition:
+       apiVersion: policy.open-cluster-management.io/v1
+       kind: ConfigurationPolicy
+       metadata:
+         name: policy-odf-storagecluster-mcgonly
+       spec:
+         object-templates:
+           - complianceType: musthave
+             objectDefinition:
+              apiVersion: ocs.openshift.io/v1
+              kind: StorageCluster
+              metadata:
+                annotations:
+                  uninstall.ocs.openshift.io/cleanup-policy: delete
+                  uninstall.ocs.openshift.io/mode: graceful
+                name: ocs-storagecluster
+                namespace: openshift-storage
+              spec:
+                multiCloudGateway:
+                  dbStorageClassName: odf-lvm-vg1
+                  reconcileStrategy: standalone
+                version: 4.10.0
+         remediationAction: enforce
+         severity: high
+
+ remediationAction: enforce
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+ name: placement-policy-odf-storagecluster-mcgonly
+ namespace: acm-policies
+spec:
+ clusterConditions:
+   - status: 'True'
+     type: ManagedClusterConditionAvailable
+ clusterSelector:
+   matchExpressions:
+     - key: local-cluster
+       operator: NotIn
+       values:
+         - "true"
+     - key: clusterType
+       operator: In
+       values:
+         - SNO
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+ name: binding-policy-storagecluster-mcgonly
+ namespace: acm-policies
+placementRef:
+ apiGroup: apps.open-cluster-management.io
+ kind: PlacementRule
+ name: placement-policy-odf-storagecluster-mcgonly
+subjects:
+ - name: policy-odf-storagecluster-mcgonly
+   apiGroup: policy.open-cluster-management.io
+   kind: Policy

@@ -7,7 +7,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: factory-policy-ns
+  name: acm-policies
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
@@ -17,7 +17,7 @@ metadata:
    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
    policy.open-cluster-management.io/standards: NIST SP 800-53
  name: policy-odf-operator
- namespace: factory-policy-ns
+ namespace: acm-policies
 spec:
  disabled: false
  policy-templates:
@@ -91,7 +91,7 @@ apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
  name: placement-policy-odf-operator
- namespace: factory-policy-ns
+ namespace: acm-policies
 spec:
  clusterConditions:
    - status: 'True'
@@ -107,7 +107,7 @@ apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
  name: binding-policy-odf-operator
- namespace: factory-policy-ns
+ namespace: acm-policies
 placementRef:
  apiGroup: apps.open-cluster-management.io
  kind: PlacementRule
