@@ -1,0 +1,113 @@
+# This policy verifies the installation of the official version of the OpenShift Data Foundation
+# Operator on the managed clusters.
+# If set to "enforce" it installs the operator.
+# Used APIs: OLM, ODF #https://github.com/operator-framework/operator-lifecycle-manager
+# https://github.com/red-hat-storage/odf-operator
+
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+ annotations:
+   policy.open-cluster-management.io/categories: CM Configuration Management
+   policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+   policy.open-cluster-management.io/standards: NIST SP 800-53
+ name: policy-odf-storagecluster-aws
+ namespace: factory-policy-ns
+spec:
+ disabled: false
+ policy-templates:
+   - objectDefinition:
+       apiVersion: policy.open-cluster-management.io/v1
+       kind: ConfigurationPolicy
+       metadata:
+         name: policy-odf-storagecluster-aws
+       spec:
+         object-templates:
+           - complianceType: musthave
+             objectDefinition:
+              apiVersion: ocs.openshift.io/v1
+              kind: StorageCluster
+              metadata:
+                annotations:
+                  uninstall.ocs.openshift.io/cleanup-policy: delete
+                  uninstall.ocs.openshift.io/mode: graceful
+                name: ocs-storagecluster
+                namespace: openshift-storage
+              spec:
+                mirroring: {}
+                resources:
+                  mds:
+                    limits:
+                      cpu: "3"
+                      memory: 8Gi
+                    requests:
+                      cpu: "3"
+                      memory: 8Gi
+                storageDeviceSets:
+                - config: {}
+                  count: 1
+                  dataPVCTemplate:
+                    metadata: {}
+                    spec:
+                      accessModes:
+                      - ReadWriteOnce
+                      resources:
+                        requests:
+                          storage: 2Ti
+                      storageClassName: gp3-csi
+                      volumeMode: Block
+                    status: {}
+                  name: ocs-deviceset-gp3-csi
+                  placement: {}
+                  portable: true
+                  preparePlacement: {}
+                  replica: 3
+                  resources:
+                    limits:
+                      cpu: "2"
+                      memory: 5Gi
+                    requests:
+                      cpu: "2"
+                      memory: 5Gi
+                version: 4.10.0
+         remediationAction: enforce
+         severity: high
+remediationAction: enforce
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+ name: placement-policy-odf-storagecluster-aws
+ namespace: factory-policy-ns
+spec:
+ clusterConditions:
+   - status: 'True'
+     type: ManagedClusterConditionAvailable
+ clusterSelector:
+   matchExpressions:
+     - key: local-cluster
+       operator: NotIn
+       values:
+         - "true"
+     - key: cloud
+       operator: In
+       values:
+         - "Amazon"
+     - key: clusterType
+       operator: NotIn
+       values:
+         - SNO
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+ name: binding-policy-odf-storagecluster-aws
+ namespace: factory-policy-ns
+placementRef:
+ apiGroup: apps.open-cluster-management.io
+ kind: PlacementRule
+ name: placement-policy-odf-storagecluster-aws
+subjects:
+ - name: policy-odf-storagecluster-aws
+   apiGroup: policy.open-cluster-management.io
+   kind: Policy

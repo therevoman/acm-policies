@@ -1,0 +1,93 @@
+# This policy verifies the assignment of cluster-admin to specific users
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-rolebinding-list
+  namespace: factory-policy-ns
+  annotations:
+    policy.open-cluster-management.io/categories: AC Access Control
+    policy.open-cluster-management.io/controls: AC-3 Access Enforcement
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+spec:
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: policy-rolebinding-list
+        spec:
+          namespaceSelector:
+            exclude: ["kube-*"]
+            include: ["default"]
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: rbac.authorization.k8s.io/v1
+                kind: ClusterRoleBinding # role binding must exist
+                metadata:
+                  name: cluster-adminlist-rolebinding
+                roleRef:
+                  name: cluster-admin # this must match the name of the Role or ClusterRole you wish to bind to
+                  apiGroup: rbac.authorization.k8s.io
+                  kind: ClusterRole #this must be Role or ClusterRole
+                subjects:
+                  - name: admin # Name is case sensitive
+                    apiGroup: rbac.authorization.k8s.io
+                    kind: User
+                  - name: nrevo # Name is case sensitive
+                    apiGroup: rbac.authorization.k8s.io
+                    kind: User
+                  - name: dbewly # Name is case sensitive
+                    apiGroup: rbac.authorization.k8s.io
+                    kind: User
+                  - name: krrai # Name is case sensitive
+                    apiGroup: rbac.authorization.k8s.io
+                    kind: User
+                  - name: rvantilb # Name is case sensitive
+                    apiGroup: rbac.authorization.k8s.io
+                    kind: User
+                  - name: rbhupath # Name is case sensitive
+                    apiGroup: rbac.authorization.k8s.io
+                    kind: User
+          remediationAction: enforce
+          severity: high
+  remediationAction: enforce
+status:
+  placement:
+    - placementBinding: policy-rolebinding-list-placement-binding
+      placementRule: policy-rolebinding-list-placement
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: policy-rolebinding-list-placement
+  namespace: factory-policy-ns
+spec:
+  clusterConditions:
+    - status: "True"
+      type: ManagedClusterConditionAvailable
+  clusterSelector:
+    matchExpressions:
+      - key: clusterAuth
+        operator: In
+        values:
+          - local
+      - key: local-cluster
+        operator: NotIn
+        values:
+          - "true"
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: policy-rolebinding-list-placement-binding
+  namespace: factory-policy-ns
+placementRef:
+  name: policy-rolebinding-list-placement
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+subjects:
+  - name: policy-rolebinding-list
+    apiGroup: policy.open-cluster-management.io
+    kind: Policy

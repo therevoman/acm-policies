@@ -1,0 +1,96 @@
+# This policy verifies the installation of nrevo's OAuth htpass policy
+
+#apiVersion: v1
+#kind: Namespace
+#metadata:
+#  name: factory-policy-ns
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+ annotations:
+   policy.open-cluster-management.io/categories: CM Configuration Management
+   policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+   policy.open-cluster-management.io/standards: NIST SP 800-53
+ name: policy-oauth-htpasswd
+ namespace: factory-policy-ns
+spec:
+ disabled: false
+ policy-templates:
+   - objectDefinition:
+       apiVersion: policy.open-cluster-management.io/v1
+       kind: ConfigurationPolicy
+       metadata:
+         name: policy-oauth-htpasswd-secret
+       spec:
+         object-templates:
+           - complianceType: musthave
+             objectDefinition:
+              apiVersion: v1
+              type: Opaque
+              data:
+                htpasswd: bnJldm9AcmVkaGF0LmNvbTokMnkkMDUkNUdiSGVKb0Q5ZW9nR2hRMzlmOHlhdXE2VEVKeWZqNkdXN2NxdWJYb3lmaXRnY2xvcFdUUm0KbnJldm86JDJ5JDA1JG10NnpXSFMzbWlaY1hENGNxMElVVi5XQjNQYjdURE1ySUtJZmhqZGdTQnFWZFM0T285SW9LCmFkbWluOiQyeSQwNSRESHF0NkwwbVRvZjBUUFhncHJuVGR1a0cydFdMd1J5ZW5rZncua3FKeWlmTU8xdUhOSllJbQp0ZXN0dXNlcjokMnkkMDUkVXJ3M1FxZi8vWUpGZFdEQ2ZNZHR0T29aejJJaHpiRXN6UEJEMWJ0SFZFVzJuOUJVekFwaG0KcmJodXBhdGg6JDJ5JDA1JE9ET25TWXZsWnZOV2tZR05kSU96SC5BTllzV2Q4YW1aQXVZZzlackVMT1NHSXoxUFA1N2FlCnBpZXRlcjokMnkkMDUkSk9DeUNhbGZwM1lLdFNIWGFSZ2tjZUFIUFZuUU9MVUNOWnJSQVZ6azdmbDJEZnB5Tk5ZVnUKa3JyYWk6JDJ5JDA1JC42ODlydy9xWlhacjhtUDBhMEFqbk9ELnhNTEhja1NnYWZDMGtiMXF0bDVUbjFrSm5XdnplCnJ2YW50aWxiOiQyeSQwNSRwQTdqUm1Ld1JIeWNJc3FGaVpnL1h1dlhaWnFlZm4wQTRqV0ZEZGg5SFlGWEtrUW42ZVVYdQo=
+              kind: Secret
+              metadata:
+                name: htpass-secret
+                namespace: openshift-config
+         remediationAction: enforce
+         severity: high
+   - objectDefinition:
+       apiVersion: policy.open-cluster-management.io/v1
+       kind: ConfigurationPolicy
+       metadata:
+         name: policy-oauth-htpasswd
+       spec:
+         object-templates:
+           - complianceType: musthave
+             objectDefinition:
+              apiVersion: config.openshift.io/v1
+              kind: OAuth
+              metadata:
+                name: cluster
+              spec:
+                identityProviders:
+                - name: local
+                  mappingMethod: claim
+                  type: HTPasswd
+                  htpasswd:
+                    fileData:
+                      name: htpass-secret
+         remediationAction: enforce
+         severity: high
+ remediationAction: enforce
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+ name: placement-policy-oauth-htpasswd
+ namespace: factory-policy-ns
+spec:
+  clusterConditions:
+    - status: 'True'
+      type: ManagedClusterConditionAvailable
+  clusterSelector:
+    matchExpressions:
+      - key: clusterAuth
+        operator: In
+        values:
+          - local
+      - key: local-cluster
+        operator: NotIn
+        values:
+          - "true"
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+ name: binding-policy-oauth-htpasswd
+ namespace: factory-policy-ns
+placementRef:
+ apiGroup: apps.open-cluster-management.io
+ kind: PlacementRule
+ name: placement-policy-oauth-htpasswd
+subjects:
+ - name: policy-oauth-htpasswd
+   apiGroup: policy.open-cluster-management.io
+   kind: Policy

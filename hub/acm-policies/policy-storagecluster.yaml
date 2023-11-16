@@ -1,0 +1,107 @@
+# This policy verifies the installation of the official version of the OpenShift Data Foundation
+# Logical Volume Manager Operator on the managed clusters.
+# If set to "enforce" it installs the operator.
+# Used APIs: OLM, ODF-LVMO #https://github.com/operator-framework/operator-lifecycle-manager
+# https://github.com/red-hat-storage/lvm-operator
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: factory-policy-ns
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+ annotations:
+   policy.open-cluster-management.io/categories: CM Configuration Management
+   policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+   policy.open-cluster-management.io/standards: NIST SP 800-53
+ name: policy-storagecluster
+ namespace: factory-policy-ns
+spec:
+ disabled: false
+ policy-templates:
+   - objectDefinition:
+       apiVersion: policy.open-cluster-management.io/v1
+       kind: ConfigurationPolicy
+       metadata:
+         name: policy-storagecluster
+       spec:
+         object-templates:
+           - complianceType: mustonlyhave
+             objectDefinition:
+              apiVersion: ocs.openshift.io/v1
+              kind: StorageCluster
+              metadata:
+                annotations:
+                  uninstall.ocs.openshift.io/cleanup-policy: delete
+                  uninstall.ocs.openshift.io/mode: graceful
+                name: ocs-storagecluster
+                namespace: openshift-storage
+              spec:
+                resources:
+                  mds:
+                    limits:
+                      cpu: "3"
+                      memory: 8Gi
+                    requests:
+                      cpu: "3"
+                      memory: 8Gi
+                storageDeviceSets:
+                - count: 1
+                  dataPVCTemplate:
+                    spec:
+                      accessModes:
+                      - ReadWriteOnce
+                      resources:
+                        requests:
+                          storage: 2Ti
+                      storageClassName: gp3-csi
+                      volumeMode: Block
+                  name: ocs-deviceset-gp3-csi
+                  portable: true
+                  replica: 3
+                  resources:
+                    limits:
+                      cpu: "2"
+                      memory: 5Gi
+                    requests:
+                      cpu: "2"
+                      memory: 5Gi
+         remediationAction: enforce
+         severity: high
+ remediationAction: enforce
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+ name: placement-policy-lvmcluster
+ namespace: factory-policy-ns
+spec:
+ clusterConditions:
+   - status: 'True'
+     type: ManagedClusterConditionAvailable
+ clusterSelector:
+   matchExpressions:
+     - key: clusterType
+       operator: NotIn
+       values:
+         - SNO
+     - key: local-cluster
+       operator: NotIn
+       values:
+         - "true"
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+ name: binding-policy-lvmcluster
+ namespace: factory-policy-ns
+placementRef:
+ apiGroup: apps.open-cluster-management.io
+ kind: PlacementRule
+ name: placement-policy-lvmcluster
+subjects:
+ - name: policy-lvmcluster
+   apiGroup: policy.open-cluster-management.io
+   kind: Policy
